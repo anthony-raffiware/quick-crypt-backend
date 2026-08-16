@@ -1,0 +1,2 @@
+CREATE SCHEMA qc;
+ALTER SCHEMA qc OWNER TO qc_db_user;

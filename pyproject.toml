@@ -1,7 +1,36 @@
 [project]
-name = "cloud-test-app"
+name = "quick-crypt-api"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "alembic>=1.18.5",
+    "asyncpg>=0.31.0",
+    "cryptography>=49.0.0",
+    "fastapi>=0.139.2",
+    "fastapi-decorators>=1.0.20",
+    "fastapi-responseschema>=2.1.0",
+    "httpx2>=2.7.0",
+    "names>=0.3.0",
+    "psycopg2>=2.9.12",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "sqlalchemy>=2.0.51",
+    "uvicorn>=0.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore:.*deprecated.*:DeprecationWarning"
+]
+

@@ -1,0 +1,50 @@
+# docker compose -f docker/docker-compose.yml up -d qc_db
+# docker compose -f docker/docker-compose.yml logs qc_db
+# docker compose -f docker/docker-compose.yml exec -ti  qc_db /bin/bash
+name: quick-crypt-backend
+services:
+  qc_db:
+    image: postgres:18
+    env_file:
+      - path: ../test.env
+        required: true
+      - path: ../override.env
+        required: false
+    volumes:
+      - postgres_data:/var/lib/postgresql/18/docker
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qc_db_user -d qc_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qc_backend
+
+  qc_api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      qc_db:
+        condition: service_healthy
+    env_file:
+      - path: ../test.env
+        required: true
+      - path: ../override.env
+        required: false
+    expose:
+      - "8000"
+    networks:
+      - qc_backend
+
+networks:
+  qc_backend:
+    driver: bridge
+      #    internal: true  # No
+
+volumes:
+  postgres_data:
