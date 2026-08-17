@@ -1,6 +1,8 @@
 # docker compose -f docker/docker-compose.yml up -d qc_db
 # docker compose -f docker/docker-compose.yml logs qc_db
 # docker compose -f docker/docker-compose.yml exec -ti  qc_db /bin/bash
+# docker compose -f docker/docker-compose.yml run  --rm  qc_api /bin/bash
+# docker compose -f docker/docker-compose.yml up -d qc_api
 name: quick-crypt-backend
 services:
   qc_db:
@@ -40,11 +42,14 @@ services:
       - "8000"
     networks:
       - qc_backend
+      - access_service
 
 networks:
   qc_backend:
     driver: bridge
-      #    internal: true  # No
+  access_service:
+    external: true
+    name: access_configs_service-net
 
 volumes:
   postgres_data:

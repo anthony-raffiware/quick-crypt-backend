@@ -18,6 +18,7 @@ class APISettingsCores(BaseModel):
 
 class APISettings(BaseModel):
     cores: APISettingsCores
+    base_path: str = Field(description='Base URL', default='')
 
 
 class DatabaseSettings(BaseModel):

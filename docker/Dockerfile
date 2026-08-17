@@ -28,12 +28,14 @@ RUN uv sync --frozen --no-dev
 FROM python:3.13-slim AS runtime
 
 
+ENV api_root=/
 ENV database_settings__host=qc_db
 ENV database_settings__port=5432
 ENV database_settings__database=qc_db
 ENV database_settings__pg_schema=qc
 ENV database_settings__user=qc_db_user
 ENV database_settings__password=ChangeMe12
+ENV database_settings__debug=0
 
 WORKDIR /app
 
@@ -55,4 +57,3 @@ USER app
 
 EXPOSE 8000
 ENTRYPOINT ["/entry_point.sh"]
-CMD ["uv", "run", "uvicorn", "app.api.v1.main:app", "--host", "0.0.0.0", "--port", "8000"]

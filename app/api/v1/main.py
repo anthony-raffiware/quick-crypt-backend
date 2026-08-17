@@ -27,7 +27,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None,
     redoc_url=None,
-    openapi_url=None
+    openapi_url=None,
 )
 
 setup_logging(app)
@@ -36,9 +36,9 @@ app.openapi = custom_openapi(app)
 
 wrap_app_responses(app, route_class=WrappedRoute)
 
-app.include_router(root_router)
-app.include_router(session_router)
-app.include_router(topic_router)
+app.include_router(root_router, prefix=APISettings.base_path)
+app.include_router(session_router, prefix=APISettings.base_path)
+app.include_router(topic_router, prefix=APISettings.base_path)
 
 app.middleware("http")(setup_request)
 app.middleware("http")(catch_all_exceptions)
