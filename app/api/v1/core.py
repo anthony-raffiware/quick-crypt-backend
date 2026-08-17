@@ -1,6 +1,11 @@
+import sys
+import asyncio
+import logging
+import time
+import uvicorn
+from datetime import datetime
 from functools import wraps
 from pprint import pprint
-import asyncio
 from typing import (
     Generic,
     Type,
@@ -11,7 +16,7 @@ from typing import (
     List,
     Annotated
 )
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Response
 from fastapi_responseschema import (
     AbstractResponseSchema,
     SchemaAPIRoute,
@@ -20,12 +25,14 @@ from fastapi_decorators import depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
-
 from app.api.v1.dependencies import inject_request
 from app.schema import ResponseMetadata, Collection, APIResponse
 from app.models import Base as ObjectBase
 from app.utils import generate_uuid_id
 from app.db    import sessionmanager
+
+
+logger = logging.getLogger("quick-crypt")
 
 class APIException(HTTPException):
     pass
@@ -125,17 +132,85 @@ class WrappedRoute(SchemaAPIRoute):
 
 async def lifespan(app: FastAPI):
 
+    logger.info("QC API started")
+
     yield
+
+    logger.info("QC API shutting down")
 
     if sessionmanager._engine is not None:
 
         await sessionmanager.close()
 
 
+class CustomFormatter(uvicorn.logging.DefaultFormatter):
+
+    def __init__(self, fmt=None, datefmt=None, style="%", use_colors=None):
+
+        if datefmt is None:
+            datefmt = "%Y-%m-%dT%H:%M:%S"
+
+        super().__init__(fmt=fmt, datefmt=datefmt, style=style, use_colors=use_colors)
+
+    def formatTime(self, record, datefmt=None):
+
+          dt = datetime.fromtimestamp(record.created).astimezone()
+          return dt.isoformat(timespec='milliseconds')
+
+
+def setup_logging(app: FastAPI):
+
+    uvicorn_loggers = ["uvicorn", "uvicorn.access", "uvicorn.error"]
+    for logger_name in uvicorn_loggers:
+
+        uv_logger = logging.getLogger(logger_name)
+        uv_logger.handlers.clear()
+        uv_logger.propagate = False
+
+
+    logger.setLevel(logging.DEBUG)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(
+        CustomFormatter(
+            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+    )
+    logger.addHandler(console_handler)
+
+    # File Handler (Optional)
+    # file_handler = logging.FileHandler("app.log")
+    # file_handler.setFormatter(logging.Formatter(
+    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    # ))
+    # logger.addHandler(file_handler)
+
+
 async def setup_request(request: Request, call_next):
 
     request.state.request_id = generate_uuid_id()
+    start_time               = time.time()
+
     response = await call_next(request)
+
+    log_request(request, response, start_time)
+
+    return response
+
+
+def log_request(request: Request, response: Response, start_time: str ):
+
+    process_time = time.time() - start_time
+
+    request_id = request.state.request_id
+    timestamp  = time.strftime('%d/%b/%Y:%H:%M:%S %z', time.gmtime())
+    ip         = request.client.host if request.client else "-"
+    method     = request.method
+    path       = request.url.path
+    status     = response.status_code
+
+    # Log in Apache-like format
+    logger.info(f'{request_id} {ip} - - [{timestamp}] "{method} {path}" {status} {process_time:.4f}')
 
     return response
 
@@ -145,7 +220,15 @@ async def catch_all_exceptions(request: Request, call_next):
         return await call_next(request)
     except Exception as exc:
 
-        print(exc)
+        request_id = request.state.request_id
+        timestamp  = time.strftime('%d/%b/%Y:%H:%M:%S %z', time.gmtime())
+        ip         = request.client.host if request.client else "-"
+        method     = request.method
+        path       = request.url.path
+        status     = 500 #response.status_code
+
+        logger.info(f'{request_id} {ip} - - [{timestamp}] "{method} {path}" {status}')
+        logger.error(f'{request_id} {exc}')
 
         meta = ResponseMetadata(
             error=True,

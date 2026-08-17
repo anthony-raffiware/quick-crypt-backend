@@ -1,7 +1,6 @@
 """
 uv run uvicorn app.api.v1.main:app  --host 0.0.0.0 --port 8000  --reload
 """
-import logging
 import uvicorn
 from uvicorn.config import LOGGING_CONFIG
 from fastapi import FastAPI
@@ -15,7 +14,8 @@ from .core import (
     WrappedRoute,
     setup_request,
     catch_all_exceptions,
-    custom_openapi
+    custom_openapi,
+    setup_logging
 )
 from .route import root_router, session_router, topic_router
 
@@ -29,6 +29,8 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None
 )
+
+setup_logging(app)
 
 app.openapi = custom_openapi(app)
 
@@ -49,9 +51,5 @@ app.add_middleware(
     allow_headers=['*']
 )
 
-LOGGING_CONFIG["formatters"]["default"]["fmt"] = "%(asctime)s [%(levelname)s] %(message)s"
-LOGGING_CONFIG["formatters"]["access"]["fmt"] = "%(asctime)s %(client_addr)s - \"%(request_line)s\" %(status_code)s"
-
-
 if __name__ == "__main__":
-    uvicorn.run(app, log_config=LOGGING_CONFIG)
+    uvicorn.run(app)
