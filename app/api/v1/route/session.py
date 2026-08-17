@@ -54,8 +54,8 @@ async def new_session(
 
 @router.get("/{session_id}", response_model=Session)
 async def get_session(
-        session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
-        db_session: DBSessionDep
+    session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
+    db_session: DBSessionDep
 ):
 
     try:
@@ -71,8 +71,8 @@ async def get_session(
 
 
 @router.post("/{session_id}/new_topic",
-  response_model=Topic,
-  status_code=status.HTTP_201_CREATED
+    response_model=Topic,
+    status_code=status.HTTP_201_CREATED
 )
 async def create_new_topic(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],

@@ -15,7 +15,7 @@ from app.schema.topic import (
     TopicReply
 )
 from app.schema import Collection, CollectionResponseModel
-from app.crud.topics import  load_topic, load_topic_replies, add_topic_reply
+from app.crud.topics import  load_topic, add_topic_reply
 from app.utils import UUID4_PATTERN
 
 

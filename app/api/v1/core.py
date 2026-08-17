@@ -18,6 +18,8 @@ from fastapi_responseschema import (
 )
 from fastapi_decorators import depends
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
+
 
 from app.api.v1.dependencies import inject_request
 from app.schema import ResponseMetadata, Collection, APIResponse
@@ -138,6 +140,28 @@ async def setup_request(request: Request, call_next):
     return response
 
 
+async def catch_all_exceptions(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+
+        print(exc)
+
+        meta = ResponseMetadata(
+            error=True,
+            request_id=request.state.request_id,
+            data_type='Error'
+        )
+
+        return JSONResponse(
+            status_code=500,
+            content={
+               "data": 'Server Error',
+               "meta": meta.model_dump()
+            }
+        )
+
+
 def custom_openapi(app):
 
     def custom_builder():
@@ -150,7 +174,7 @@ def custom_openapi(app):
             version="1.0.0",
             routes=app.routes
         )
-        # Replace the default 422 schema with your custom model
+
         openapi_schema["components"]["schemas"]["ErrorResponse"] = APIResponse.schema()
         for path in openapi_schema["paths"].values():
             for method in path.values():

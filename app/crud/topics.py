@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Tuple, List
 from datetime import datetime
 
 from sqlalchemy import select, func, and_, tuple_
@@ -11,6 +11,7 @@ from sqlalchemy.orm import (
     aliased
 )
 from sqlalchemy.sql.expression import Select
+from sqlalchemy.engine.result import ScalarResult
 
 from app.api.v1.dependencies import DBSessionDep
 from app.models import Topic, TopicReply, ReplyComment
@@ -21,7 +22,7 @@ from app.db import collection_result
 async def load_topic(
     db_session: DBSessionDep,
     topic_id: str
-):
+) -> Topic:
 
     query = (
         select(Topic)
@@ -35,7 +36,7 @@ async def get_session_topic_results(
     db_session: DBSessionDep,
     session_id: str,
     **params: Any
-):
+) -> Tuple[ScalarResult, int, int]:
 
     query = (
         select(Topic)
@@ -52,7 +53,7 @@ async def load_session_topics(
     db_session: DBSessionDep,
     session_id: str,
     **params: Any
-):
+) -> Tuple[List[Topic], int, int]:
 
     topics, count, limit = (await get_session_topic_results(db_session, session_id, **params))
 
@@ -64,7 +65,7 @@ async def load_session_topic_replies(
     session_id: str,
     topic_id: str,
     **params: Any
-):
+) -> Topic:
 
     key_id = params.get('key_id')
     key_ts = params.get('key_ts')
@@ -110,7 +111,7 @@ async def get_session_replies_results(
     db_session: DBSessionDep,
     session_key_id: str,
     **params: Any
-):
+) -> Tuple[ScalarResult, int, int]:
 
 
     last_reply = (
@@ -141,7 +142,7 @@ async def load_session_replies(
     db_session: DBSessionDep,
     session_key_id: str,
     **params: Any
-):
+) -> Tuple[List[Topic], int, int]:
 
     replies, count, limit = (await get_session_replies_results(db_session, session_key_id, **params))
 
@@ -153,7 +154,7 @@ async def load_topic_with_replies(
     session_key_id: str,
     topic_id: str,
     **params: Any
-):
+) -> Topic:
 
     key_id = params.get('key_id')
     key_ts = params.get('key_ts')
@@ -198,7 +199,7 @@ async def load_topic_with_replies(
 async def create_topic(
     db_session: DBSessionDep,
     new_topic: NewTopic
-):
+) -> Topic:
 
     topic = Topic(
         session_id=new_topic.session_id,
@@ -219,7 +220,8 @@ async def create_topic(
 async def add_topic_reply(
     db_session: DBSessionDep,
     new_reply: NewTopicReply
-):
+) -> TopicReply:
+
     reply = TopicReply(
         topic_id=new_reply.topic_id,
         session_key_id=new_reply.session_key_id,
@@ -241,35 +243,10 @@ async def add_topic_reply(
     return reply
 
 
-async def get_topic_replies_results(
-    db_session: DBSessionDep,
-    topic_id: str,
-    **params: Any
-):
-
-    query = (
-        select(TopicReply)
-        .where(TopicReply.topic_id == uuid.UUID(topic_id))
-    )
-
-    return await collection_result(db_session, query, **params)
-
-
-async def load_topic_replies(
-    db_session: DBSessionDep,
-    topic_id: str,
-    **params: Any
-):
-
-    replies, count, limit = await get_topic_replies_results(db_session, topic_id, **params)
-
-    return replies.all(), count, limit
-
-
 async def add_reply_comment(
     db_session: DBSessionDep,
     new_comment: NewReplyComment
-):
+) -> ReplyComment:
 
     comment = ( await db_session\
                 .execute(

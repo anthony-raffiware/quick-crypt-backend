@@ -1,18 +1,20 @@
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Tuple
 import contextlib
-
 import asyncio
 from asyncio import Future
+
 from sqlalchemy import create_engine, event, select, func
 from sqlalchemy.ext.asyncio import (
   create_async_engine,
   async_sessionmaker,
   AsyncSession,
-  AsyncConnection
+  AsyncConnection,
+  AsyncEngine
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql.expression import Select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine.result import ScalarResult
 
 from app.config import Settings
 
@@ -33,7 +35,7 @@ class DatabaseSessionManager:
                              )
 
 
-    def get_db_url(self):
+    def get_db_url(self) -> str:
 
         settings = self.settings
         host     = settings.host
@@ -47,7 +49,7 @@ class DatabaseSessionManager:
         return url
 
 
-    def get_async_engine(self):
+    def get_async_engine(self) -> AsyncEngine:
 
         settings = self.settings
         schema   = settings.pg_schema
@@ -116,7 +118,7 @@ class DatabaseSessionManager:
 sessionmanager = DatabaseSessionManager()
 
 
-async def get_db_session():
+async def get_db_session() -> AsyncIterator[AsyncSession]:
 
     async with sessionmanager.session() as session:
         yield session
@@ -126,7 +128,7 @@ async def collection_result(
     db_session: 'DBSessionDep',
     query: Select,
     limit: int = 10
-):
+) -> Tuple[ScalarResult, int, int]:
 
     count_stmt = select(func.count()).select_from(query.subquery())
 
