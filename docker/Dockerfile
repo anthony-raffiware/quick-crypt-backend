@@ -28,7 +28,7 @@ RUN uv sync --frozen --no-dev
 FROM python:3.13-slim AS runtime
 
 
-ENV api_root=/
+ENV api_settings__base_path=/api
 ENV database_settings__host=qc_db
 ENV database_settings__port=5432
 ENV database_settings__database=qc_db
@@ -42,13 +42,11 @@ WORKDIR /app
 COPY --from=builder /app /app
 COPY --from=builder /bin /bin
 
-#RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 RUN useradd -m -d /app --shell /bin/bash app && chown -R app:app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
 ENV PYTHONUNBUFFERED=1
-
 
 COPY docker/entry_point.sh /entry_point.sh
 RUN chmod +x /entry_point.sh
