@@ -1,9 +1,9 @@
-# QuickCrypt
+# Quick Crypt API
 
-Web based end-to-end encrypted messaging
+Simple web based end-to-end encrypted messaging
 
+## Start API
 
-Start demo backend
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ```
