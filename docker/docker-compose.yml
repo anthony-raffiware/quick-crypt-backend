@@ -42,14 +42,10 @@ services:
       - "8000"
     networks:
       - qc_backend
-      - access_service
 
 networks:
   qc_backend:
     driver: bridge
-  access_service:
-    external: true
-    name: access_configs_service-net
 
 volumes:
   postgres_data:
