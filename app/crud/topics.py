@@ -113,7 +113,6 @@ async def get_session_replies_results(
     **params: Any
 ) -> Tuple[ScalarResult, int, int]:
 
-
     last_reply = (
         select(
            TopicReply.topic_id,

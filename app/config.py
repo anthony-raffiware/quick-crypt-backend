@@ -10,6 +10,7 @@ from typing import Tuple, Type
 
 
 class APISettingsCores(BaseModel):
+
     allow_origins: List[str] = Field(description='CORS allow-origins', default=[])
     allow_credentials: bool  = Field(description='CORS allow-credentials', default=False )
     allow_methods: List[str] = Field(description='CORS allow-methods', default=["*"])
@@ -17,6 +18,7 @@ class APISettingsCores(BaseModel):
 
 
 class APISettings(BaseModel):
+
     cores: APISettingsCores
     base_path: str = Field(description='Base URL', default='')
 

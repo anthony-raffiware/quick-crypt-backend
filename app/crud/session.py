@@ -11,7 +11,7 @@ from app.models import Session
 async def create_session(
     db_session: DBSessionDep,
     key: str,
-):
+) -> Session:
 
     session = Session(session_pub_key=key)
 
@@ -27,7 +27,7 @@ async def create_session(
 async def load_session(
     db_session: DBSessionDep,
     session_id: str
-):
+) -> Session:
 
     query = (
         select(Session)

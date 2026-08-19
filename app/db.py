@@ -23,7 +23,6 @@ DBSettings = Settings().database_settings
 
 class DatabaseSessionManager:
 
-
     def __init__(self):
 
         self.settings = DBSettings
