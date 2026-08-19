@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.v1.dependencies import DBSessionDep
-from app.api.v1.core import WrappedRoute
+from app.api.v1.core import WrappedRoute, APIException
 from app.schema.topic import (
     Topic,
     TopicFull,
@@ -46,6 +46,9 @@ async def send_topic_reply(
     ],
     db_session: DBSessionDep
 ):
+
+    #raise APIException(status_code=413, detail="Too Large")
+
 
     new_reply.topic_id = UUID(topic_id)
 

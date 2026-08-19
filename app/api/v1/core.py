@@ -42,6 +42,7 @@ T = TypeVar("T")
 
 
 class ResponseSchema(AbstractResponseSchema[T], Generic[T]):
+
     data: T
     meta: ResponseMetadata
 
@@ -55,6 +56,7 @@ class ResponseSchema(AbstractResponseSchema[T], Generic[T]):
         )
 
         return cls(data=reason, meta=meta)
+
 
     @classmethod
     def from_api_route(
@@ -83,6 +85,7 @@ class WrappedRoute(SchemaAPIRoute):
         response_model: Type[Any],
         **params: Any
     ) -> Callable:
+
         def decorator(func: Callable) -> Callable:
 
             if asyncio.iscoroutinefunction(func):
@@ -161,6 +164,7 @@ class CustomFormatter(uvicorn.logging.DefaultFormatter):
 def setup_logging(app: FastAPI):
 
     uvicorn_loggers = ["uvicorn", "uvicorn.access", "uvicorn.error"]
+
     for logger_name in uvicorn_loggers:
 
         uv_logger = logging.getLogger(logger_name)

@@ -113,13 +113,12 @@ async def get_session_replies_results(
     **params: Any
 ) -> Tuple[ScalarResult, int, int]:
 
-
     last_reply = (
         select(
            TopicReply.topic_id,
            func.max(TopicReply.created_ts).label('last_reply_date')
         )
-        .where(TopicReply.session_key_id == session_key_id )
+        .where(TopicReply.session_key_id == session_key_id)
         .group_by(TopicReply.topic_id)
         .subquery()
         .lateral()
@@ -248,11 +247,13 @@ async def add_reply_comment(
     new_comment: NewReplyComment
 ) -> ReplyComment:
 
-    comment = ( await db_session\
-                .execute(
-                    select(ReplyComment)
-                    .where(ReplyComment.topic_reply_id == new_comment.topic_reply_id)
-                )
+    comment = (await db_session
+                     .execute(
+                         select(ReplyComment)
+                         .where(
+                             ReplyComment.topic_reply_id == new_comment.topic_reply_id
+                         )
+                     )
               )\
               .scalars().first()
 
