@@ -27,11 +27,13 @@ from fastapi_decorators import depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
+
 from app.api.v1.dependencies import inject_request
 from app.schema import ResponseMetadata, Collection, APIResponse
 from app.models import Base as ObjectBase
-from app.utils import generate_uuid_id, check_param
+from app.utils import generate_uuid_id, check_param, verify_tokens
 from app.db    import sessionmanager
+from app.crud.session import get_session_key
 
 
 logger = logging.getLogger("quick-crypt")
@@ -114,7 +116,7 @@ class WrappedRoute(SchemaAPIRoute):
                         endpoint_output=endpoint_output,
                         wrapper_model=wrapper_model,
                         response_model=response_model,
-                        request_id='111', #request.state.request_id,
+                        request_id=request.state.request_id,
                         data_type=data_type,
                         **params,
                     )
@@ -294,9 +296,26 @@ def verify_session(func):
     async def wrapper(*args, **kwargs):
 
         request: Request = kwargs.pop('request')
+        session_id       = kwargs.get('session_id')
+        db_session       = kwargs.get('db_session')
+        session_key      = await get_session_key(db_session, session_id)
 
         all_headers = dict(request.headers)
-        pprint(all_headers)
+        req_utc     = all_headers.get('x-qcs-timestamp');
+        req_nonce   = all_headers.get('x-qcs-nonce');
+        req_sig     = all_headers.get('x-qcs-signature');
+
+        if not req_utc or not req_nonce or not req_sig:
+            raise APIException(status_code=401)
+
+        tokens = {
+           "sessionUuid": session_id,
+           "date": req_utc,
+           "nonce": req_nonce
+        }
+
+        if not verify_tokens(tokens, req_sig, session_key):
+            raise APIException(status_code=401)
 
         request_param, param_ype = check_param(func, 'request')
 

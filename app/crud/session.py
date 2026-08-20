@@ -24,6 +24,20 @@ async def create_session(
     return session
 
 
+async def get_session_key(
+    db_session: DBSessionDep,
+    session_id: str
+) -> str:
+
+    query = (
+        select(Session.session_pub_key)
+        .where(Session.id == uuid.UUID(session_id))
+    )
+
+    session_key = (await db_session.execute(query)).scalars().first()
+
+    return session_key
+
 async def load_session(
     db_session: DBSessionDep,
     session_id: str
