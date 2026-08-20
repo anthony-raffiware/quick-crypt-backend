@@ -3,6 +3,7 @@ import base64
 import re
 import logging
 import inspect
+import datetime
 from typing import List, Annotated, Generic, TypeVar, Optional, Dict, AnyStr
 from pprint import pprint
 from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
@@ -25,6 +26,10 @@ UUID4_PATTERN = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[a-fA-F0-9]{3}-[89a
 
 def generate_uuid_id(length: int = 16) -> str:
     return uuid.uuid4().hex[:length]
+
+
+def get_current_utc_iso_8601():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
 def verify_tokens(tokens: Dict, signature: str, pub_key: str) -> bool:

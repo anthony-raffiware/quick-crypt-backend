@@ -62,6 +62,7 @@ async def new_session(
 
 
 @router.get("/{session_id}", response_model=Session)
+@verify_session
 async def get_session(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     db_session: DBSessionDep

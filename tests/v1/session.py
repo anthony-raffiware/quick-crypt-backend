@@ -29,10 +29,10 @@ logging.getLogger('sqlalchemy.engine.Engine').disabled = True
 @pytest.mark.asyncio(loop_scope="session")
 async def test_get_session(api_client, db_session, test_sessions):
 
-    session_id, priv_key, *_ = test_sessions[0]
+    session_id, *_ = test_sessions[0]
 
     #response = await api_client.get(f"/session/{session_id}")
-    response = await sign_request(priv_key,
+    response = await sign_request(test_sessions[0] ,
                          api_client.get, f"/session/{session_id}"
                      )
     dump_response(response)
