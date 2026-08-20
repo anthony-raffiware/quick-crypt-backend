@@ -12,7 +12,8 @@ from tests.utils import (
     dump_response,
     generate_ed25519_key,
     generate_x25519_key,
-    gen_junk_data
+    gen_junk_data,
+    sign_request
 )
 from app.api.v1 import app
 from app.models import Base, Session, Topic, TopicReply
@@ -28,9 +29,12 @@ logging.getLogger('sqlalchemy.engine.Engine').disabled = True
 @pytest.mark.asyncio(loop_scope="session")
 async def test_get_session(api_client, db_session, test_sessions):
 
-    session_id, *_ = test_sessions[0]
+    session_id, priv_key, *_ = test_sessions[0]
 
-    response = await api_client.get(f"/session/{session_id}")
+    #response = await api_client.get(f"/session/{session_id}")
+    response = await sign_request(priv_key,
+                         api_client.get, f"/session/{session_id}"
+                     )
     dump_response(response)
     assert response.status_code == 200
 

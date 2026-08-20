@@ -21,6 +21,7 @@ from app.api.v1 import app
 from app.db import get_db_session, sessionmanager
 from app.models import Base, Session, Topic, TopicReply
 from app.config import Settings
+from app.utils import load_private_key
 #os.environ['database_settings__pg_schema'] = 'cloud_app_testing'
 
 
@@ -174,8 +175,8 @@ async def create_session(name:str):
         #await db_session.refresh(message, ["message_parts"])
         await db_session.commit()
 
-
     return str(session.id), priv, str(session.key_id)
+
 
 async def create_topic(
     for_session: Session,
@@ -219,4 +220,31 @@ def gen_junk_data(size: int = 256):
 
     return os.urandom(size)
 
+
+#  response = await client.post(
+#         "https://api.example.com/upload",
+#         headers={"Content-Type": "application/json"},
+#         json={"key": "value"}
+#     )
+
+# x-qcs-nonce f2o4q4zpQpvWACw1jgDgBzzJBgKu0oZpOyPNmpSgh/U=
+#
+# x-qcs-signature BFJuy8lVVwIIqMaWTM_4ycwvbC2gBrIAfyDKGSQsUvJi4ZaMmB3W-WXVURYuVhr32j7sm3Cn3gO59ArHyPraBA
+#
+# x-qcs-timestamp 2026-08-20 16:58:18 +00:00
+
+async def sign_request(
+    priv_key: str,
+    func: Callable,
+    path: str,
+    headers={},
+    **kwargs
+):
+
+    print(priv_key)
+    headers.update({"QCS-Test": "weee"})
+
+    key = load_private_key(priv_key)
+
+    return await func(path, headers=headers, **kwargs)
 

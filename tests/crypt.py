@@ -1,5 +1,9 @@
 import pytest
 import pytest_asyncio
+from tests.utils import (
+    generate_ed25519_key,
+    generate_x25519_key,
+)
 from pprint import pprint
 import asyncio
 import logging
@@ -10,7 +14,7 @@ from pprint import pprint
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from app.utils import load_public_key, verify_tokens
+from app.utils import load_public_key, verify_tokens, sign_tokens
 
 
 test_vectors = [
@@ -68,3 +72,33 @@ def test_verify_tokens():
 
     assert not not_verified
 
+
+def test_sign_tokens():
+
+    key, priv_key_enc, pub_key_enc = generate_ed25519_key()
+
+    tokens = {
+        "sessionUuid": '82c2efea-7a36-4eac-83ec-e5ae27aaad43',
+        "date": '2026-08-20 13:41:05 +00:01',
+        "nonce": 'Jy2+qrSKYKLAkPYCdugJxslEgHSW1F6keAA8GXrDRjs='
+    }
+
+    sig = sign_tokens(tokens, priv_key_enc)
+
+    assert sig
+
+    verified = verify_tokens(tokens, sig, pub_key_enc)
+
+    assert verified
+
+    btokens = {
+        "sessionUuid": '82c2efea-7a36-4eac-83ec-e5ae27aaad43',
+        "date": '2026-08-20 13:41:05 +00:02',
+        "nonce": 'Jy2+qrSKYKLAkPYCdugJxslEgHSW1F6keAA8GXrDRjs='
+    }
+
+    bsig = sign_tokens(tokens, priv_key_enc)
+
+    not_verified = verify_tokens(btokens, bsig, pub_key_enc)
+
+    assert not not_verified
