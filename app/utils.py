@@ -2,6 +2,7 @@ import uuid
 import base64
 import re
 import logging
+import inspect
 from typing import List, Annotated, Generic, TypeVar, Optional, Dict, AnyStr
 from pprint import pprint
 from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
@@ -57,3 +58,16 @@ def decode_base64_url(base64url: str) -> AnyStr:
 
     return base64.urlsafe_b64decode(padded_string)
 
+
+def check_param(func, param_name):
+
+    sig    = inspect.signature(func)
+    params = sig.parameters
+    pprint(params)
+
+    if param_name in params:
+        param = params[param_name]
+        # param.kind indicates type: POSITIONAL_ONLY, POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, VAR_KEYWORD
+        return True, param.kind
+
+    return False, None

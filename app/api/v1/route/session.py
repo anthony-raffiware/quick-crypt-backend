@@ -37,7 +37,7 @@ from app.crud.topics import (
     add_reply_comment
 )
 from app.utils import UUID4_PATTERN
-
+from app.api.v1.core import verify_session
 
 router = APIRouter(prefix="/session", tags=["session"], route_class=WrappedRoute)
 
@@ -197,6 +197,7 @@ async def get_sent(
 @router.get("/{session_id}/replies/{topic_id}",
     response_model=TopicFull
 )
+@verify_session
 async def get_sent_topic_replies(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     topic_id:   Annotated[str, Path(title="topic id", pattern=UUID4_PATTERN)],
@@ -204,7 +205,7 @@ async def get_sent_topic_replies(
     limit:      int | None      = Query(default=5, ge=1, le=10),
     key_id:     str | None      = Query(default=None),
     key_ts:     datetime | None = Query(default=None),
-#    request: Request = None,
+    request: Request = None,
 ):
     """
     - session_id: session UUID

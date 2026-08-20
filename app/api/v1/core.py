@@ -3,7 +3,8 @@ import asyncio
 import logging
 import time
 import uvicorn
-import inspect
+import traceback
+#import inspect
 from datetime import datetime
 from functools import wraps
 from pprint import pprint
@@ -29,7 +30,7 @@ from fastapi.responses import JSONResponse
 from app.api.v1.dependencies import inject_request
 from app.schema import ResponseMetadata, Collection, APIResponse
 from app.models import Base as ObjectBase
-from app.utils import generate_uuid_id
+from app.utils import generate_uuid_id, check_param
 from app.db    import sessionmanager
 
 
@@ -95,7 +96,7 @@ class WrappedRoute(SchemaAPIRoute):
                 @wraps(func)
                 async def wrapper(*args: Any, request, **kwargs: Any) -> Any:
 
-                    request_param, param_ype = check_param(func, 'request')
+                    request_param, param_type = check_param(func, 'request')
 
                     if request_param:
                         endpoint_output = await func(*args, request=request, **kwargs)
@@ -238,7 +239,9 @@ async def catch_all_exceptions(request: Request, call_next):
         status     = 500 #response.status_code
 
         logger.info(f'{request_id} {ip} - - [{timestamp}] "{method} {path}" {status}')
-        logger.error(f'{request_id} {exc}')
+
+        error_message = traceback.format_exc()
+        logger.error(f'{request_id} {error_message}')
 
         meta = ResponseMetadata(
             error=True,
@@ -284,15 +287,24 @@ def custom_openapi(app):
     return custom_builder
 
 
-def check_param(func, param_name):
+def verify_session(func):
 
-    sig    = inspect.signature(func)
-    params = sig.parameters
-    pprint(params)
+    @depends(request=Depends(inject_request))
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
 
-    if param_name in params:
-        param = params[param_name]
-        # param.kind indicates type: POSITIONAL_ONLY, POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, VAR_KEYWORD
-        return True, param.kind
+        request: Request = kwargs.pop('request')
 
-    return False, None
+        all_headers = dict(request.headers)
+        pprint(all_headers)
+
+        request_param, param_ype = check_param(func, 'request')
+
+        if request_param:
+            return await func(*args, request=request, **kwargs)
+        else:
+            return await func(*args, **kwargs)
+
+    return wrapper
+
+

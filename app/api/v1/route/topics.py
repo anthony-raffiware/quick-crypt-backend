@@ -29,27 +29,14 @@ from app.schema.topic import (
 )
 from app.schema import Collection, CollectionResponseModel
 from app.crud.topics import  load_topic, add_topic_reply
-from app.utils import UUID4_PATTERN
+from app.utils import UUID4_PATTERN, check_param
 from app.api.v1.dependencies import inject_request
+from app.api.v1.core import verify_session
+
 
 router = APIRouter(prefix="/topic", tags=["topics"], route_class=WrappedRoute)
 
 logger = logging.getLogger("quick-crypt")
-
-def sig_decorator(func):
-
-    #@depends(request=Depends(inject_request))
-    @wraps(func)
-    async def wrapper( *args, **kwargs):
-
-        request: Request = kwargs.get('request')
-
-        all_headers = dict(request.headers)
-        pprint(all_headers)
-
-        return await func(*args, **kwargs)
-
-    return wrapper
 
 
 @router.post(
@@ -57,7 +44,7 @@ def sig_decorator(func):
     response_model=TopicReply,
     status_code=status.HTTP_201_CREATED
 )
-@sig_decorator
+@verify_session
 async def send_topic_reply(
     topic_id: Annotated[str, Path(title="topic id", pattern=UUID4_PATTERN)],
     new_reply: Annotated[
@@ -76,7 +63,7 @@ async def send_topic_reply(
         )
     ],
     db_session: DBSessionDep,
-    request: Request = None,
+    #request: Request,
 ):
 
     new_reply.topic_id = UUID(topic_id)
