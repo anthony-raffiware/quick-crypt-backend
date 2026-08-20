@@ -1,7 +1,52 @@
 import uuid
+import base64
 import re
+from typing import List, Annotated, Generic, TypeVar, Optional, Dict, AnyStr
+from pprint import pprint
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
+
+#from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import load_der_public_key
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.exceptions import InvalidSignature
 
 UUID4_PATTERN = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[0-9a-fA-F]{12}$')
 
 def generate_uuid_id(length: int = 16) -> str:
     return uuid.uuid4().hex[:length]
+
+
+def verify_tokens(tokens: Dict, signature: str, pub_key: str) -> bool:
+
+    key = load_public_key(pub_key)
+    msg = getMessage_from_tokens(tokens)
+
+    sig_data = decode_base64_url(signature)
+    msg_data = bytes(msg, 'utf-8');
+
+    try:
+        key.verify(sig_data, msg_data)
+
+        return True
+    except InvalidSignature:
+        return False
+
+
+def getMessage_from_tokens(tokens: Dict) -> str:
+
+    return ",".join([tokens[k] for k in sorted(tokens)])
+
+
+def load_public_key(encoded_key: str) -> Ed25519PublicKey:
+
+    key_der = decode_base64_url(encoded_key)
+
+    return load_der_public_key(key_der)
+
+
+def decode_base64_url(base64url: str) -> AnyStr:
+
+    padded_string = base64url + '=' * (-len(base64url) % 4)
+
+    return base64.urlsafe_b64decode(padded_string)
+
