@@ -1,6 +1,7 @@
 import uuid
 import base64
 import re
+import logging
 from typing import List, Annotated, Generic, TypeVar, Optional, Dict, AnyStr
 from pprint import pprint
 from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
@@ -9,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serial
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.exceptions import InvalidSignature
+
+logger = logging.getLogger("quick-crypt")
 
 UUID4_PATTERN = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[0-9a-fA-F]{12}$')
 
@@ -25,11 +28,15 @@ def verify_tokens(tokens: Dict, signature: str, pub_key: str) -> bool:
     msg_data = bytes(msg, 'utf-8');
 
     try:
+
         key.verify(sig_data, msg_data)
 
         return True
     except InvalidSignature:
         return False
+    except Exception as e:
+        logger.error(f"Unexpected Signature Verification Error: {e}")
+        raise
 
 
 def getMessage_from_tokens(tokens: Dict) -> str:

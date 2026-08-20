@@ -36,7 +36,7 @@ test_vectors = [
 ]
 
 
-def test_load_key():
+def test_load_public_key():
 
     vector = test_vectors[0]
     pub_key = vector['pub_key']
@@ -49,8 +49,8 @@ def test_load_key():
 def test_verify_tokens():
 
 
-    vector = test_vectors[0]
-    tokens = vector['tokens']
+    vector  = test_vectors[0]
+    tokens  = vector['tokens']
     sig     = vector['sig']
     pub_key = vector['pub_key']
 
