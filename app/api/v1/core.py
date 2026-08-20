@@ -3,6 +3,7 @@ import asyncio
 import logging
 import time
 import uvicorn
+import inspect
 from datetime import datetime
 from functools import wraps
 from pprint import pprint
@@ -94,7 +95,12 @@ class WrappedRoute(SchemaAPIRoute):
                 @wraps(func)
                 async def wrapper(*args: Any, request, **kwargs: Any) -> Any:
 
-                    endpoint_output = await func(*args, **kwargs)
+                    request_param, param_ype = check_param(func, 'request')
+
+                    if request_param:
+                        endpoint_output = await func(*args, request=request, **kwargs)
+                    else:
+                        endpoint_output = await func(*args, **kwargs)
 
                     if isinstance(endpoint_output, Collection):
                         data_type = 'Collection'
@@ -107,7 +113,7 @@ class WrappedRoute(SchemaAPIRoute):
                         endpoint_output=endpoint_output,
                         wrapper_model=wrapper_model,
                         response_model=response_model,
-                        request_id=request.state.request_id,
+                        request_id='111', #request.state.request_id,
                         data_type=data_type,
                         **params,
                     )
@@ -276,3 +282,17 @@ def custom_openapi(app):
         return app.openapi_schema
 
     return custom_builder
+
+
+def check_param(func, param_name):
+
+    sig    = inspect.signature(func)
+    params = sig.parameters
+    pprint(params)
+
+    if param_name in params:
+        param = params[param_name]
+        # param.kind indicates type: POSITIONAL_ONLY, POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, VAR_KEYWORD
+        return True, param.kind
+
+    return False, None

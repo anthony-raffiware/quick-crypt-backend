@@ -1,7 +1,16 @@
 from typing import Annotated
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Path, Body, Query, Response, status
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Path,
+    Body,
+    Query,
+    Request,
+    Response,
+    status
+)
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -194,7 +203,8 @@ async def get_sent_topic_replies(
     db_session: DBSessionDep,
     limit:      int | None      = Query(default=5, ge=1, le=10),
     key_id:     str | None      = Query(default=None),
-    key_ts:     datetime | None = Query(default=None)
+    key_ts:     datetime | None = Query(default=None),
+#    request: Request = None,
 ):
     """
     - session_id: session UUID
