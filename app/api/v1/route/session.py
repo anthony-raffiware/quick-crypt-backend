@@ -113,6 +113,7 @@ async def create_new_topic(
 @router.get("/{session_id}/topics",
     response_model=CollectionResponseModel[Topic]
 )
+@verify_session
 async def get_topics(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     db_session: DBSessionDep,
@@ -127,6 +128,7 @@ async def get_topics(
 @router.get("/{session_id}/topics/{topic_id}",
     response_model=TopicFull
 )
+@verify_session
 async def get_topic_replies(
     db_session: DBSessionDep,
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
@@ -150,6 +152,7 @@ async def get_topic_replies(
     response_model=ReplyComment,
     status_code=status.HTTP_201_CREATED
 )
+@verify_session
 async def add_topic_reply_comment(
     db_session: DBSessionDep,
     response:   Response,
@@ -182,6 +185,7 @@ async def add_topic_reply_comment(
 @router.get("/{session_id}/replies",
     response_model=CollectionResponseModel[Topic]
 )
+@verify_session
 async def get_sent(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     db_session: DBSessionDep,
@@ -198,7 +202,7 @@ async def get_sent(
 @router.get("/{session_id}/replies/{topic_id}",
     response_model=TopicFull
 )
-#@verify_session
+@verify_session
 async def get_sent_topic_replies(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     topic_id:   Annotated[str, Path(title="topic id", pattern=UUID4_PATTERN)],

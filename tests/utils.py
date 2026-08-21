@@ -253,22 +253,20 @@ def gen_nonce():
 #     nonce: nonce
 # }
 
-
-
 async def sign_request(
     session_data: Tuple,
     func: Callable,
     path: str,
-    headers={},
+    headers=None,
     **kwargs
 ):
 
+    if headers is None:
+        headers = {}
+
     session_id, priv_key_enc, *_ = session_data
-    #priv_key = load_private_key(priv_key_enc)
     now_utc  =  get_current_utc_iso_8601()
     nonce    = gen_nonce()
-
-
 
     tokens = {
         "sessionUuid": session_id,
@@ -277,10 +275,6 @@ async def sign_request(
     }
 
     sig = sign_tokens(tokens, priv_key_enc)
-
-    # print(now_utc)
-    # print(nonce)
-    # print(sig)
 
     sig_headers = {
       'x-qcs-nonce': nonce,

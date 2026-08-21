@@ -300,6 +300,9 @@ def verify_session(func):
         db_session       = kwargs.get('db_session')
         session_key      = await get_session_key(db_session, session_id)
 
+        if session_key is None:
+            raise APIException(status_code=404, detail=f"Session not found")
+
         all_headers = dict(request.headers)
         req_utc     = all_headers.get('x-qcs-timestamp');
         req_nonce   = all_headers.get('x-qcs-nonce');
