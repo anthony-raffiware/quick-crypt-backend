@@ -37,10 +37,10 @@ from app.crud.topics import (
     add_reply_comment
 )
 from app.utils import UUID4_PATTERN
-from app.api.v1.core import verify_session
+from app.api.v1.core import verify_session, APIException
 
 router = APIRouter(prefix="/session", tags=["session"], route_class=WrappedRoute)
-
+logger = logging.getLogger("quypter-api")
 
 @router.post("/new",
     response_model=Session,
@@ -139,7 +139,7 @@ async def get_topic_replies(
     key_ts: datetime | None = Query(default=None)
 ):
 
-    return await load_session_topic_replies(
+    ret = await load_session_topic_replies(
         db_session,
         session_id,
         topic_id,
@@ -147,6 +147,11 @@ async def get_topic_replies(
         key_id=key_id,
         key_ts=key_ts
     )
+
+    if ret is None:
+        raise APIException(status_code=404, detail=f"Topic not found")
+
+    return ret
 
 
 @router.post("/{session_id}/topics/{topic_id}/add_comment",
@@ -178,7 +183,13 @@ async def add_topic_reply_comment(
 
     new_comment.session_key_id = session.key_id
 
-    comment = await add_reply_comment(db_session, new_comment)
+    try:
+        comment = await add_reply_comment(db_session, new_comment)
+    except Exception as e:
+
+        logger.warn(e)
+        raise APIException(status_code=400, detail=f"Invalid Comment")
+
 
     return comment
 
@@ -222,7 +233,7 @@ async def get_sent_topic_replies(
 
     session = await load_session(db_session, session_id)
 
-    return await load_topic_with_replies(
+    ret = await load_topic_with_replies(
         db_session,
         session.key_id,
         topic_id,
@@ -230,3 +241,9 @@ async def get_sent_topic_replies(
         key_id=key_id,
         key_ts=key_ts
     )
+
+    if ret is None:
+        raise APIException(status_code=404, detail=f"Reply not found")
+
+    return ret
+

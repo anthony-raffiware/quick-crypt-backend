@@ -36,7 +36,6 @@ from app.api.v1.core import verify_session, APIException
 
 
 router = APIRouter(prefix="/topic", tags=["topics"], route_class=WrappedRoute)
-
 logger = logging.getLogger("quypter-api")
 
 
@@ -74,4 +73,11 @@ async def send_topic_reply(
 
     new_reply.topic_id = UUID(topic_id)
 
-    return await add_topic_reply(db_session, session_id, new_reply)
+    try:
+        return await add_topic_reply(db_session, session_id, new_reply)
+    except Exception as e:
+
+        logger.warn(e)
+        raise APIException(status_code=400, detail=f"Invalid Topic")
+
+

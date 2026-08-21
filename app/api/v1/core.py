@@ -250,6 +250,7 @@ def log_request(request: Request, response: Response, start_time: str ):
 
 
 async def catch_all_exceptions(request: Request, call_next):
+
     try:
         return await call_next(request)
     except Exception as exc:
