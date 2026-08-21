@@ -37,7 +37,7 @@ from app.api.v1.core import verify_session, APIException
 
 router = APIRouter(prefix="/topic", tags=["topics"], route_class=WrappedRoute)
 
-logger = logging.getLogger("quick-crypt")
+logger = logging.getLogger("quypter-api")
 
 
 @router.post(

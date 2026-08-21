@@ -1,4 +1,4 @@
-# Quick Crypt API
+# Quypter API
 
 Simple web based end-to-end encrypted messaging
 

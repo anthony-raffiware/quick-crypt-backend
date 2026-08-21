@@ -45,7 +45,7 @@ from app.config import Settings
 
 APISettings = Settings().api_settings
 
-logger = logging.getLogger("quick-crypt")
+logger = logging.getLogger("quypter-api")
 
 class APIException(HTTPException):
     pass
@@ -291,7 +291,7 @@ def custom_openapi(app):
             return app.openapi_schema
 
         openapi_schema = get_openapi(
-            title="QuickCrypt API",
+            title="Quypter API",
             version="1.0.0",
             routes=app.routes
         )
@@ -331,29 +331,8 @@ def verify_session(func):
             raise APIException(status_code=404, detail=f"Session not found")
 
         req_headers = dict(request.headers)
+
         verify_request_headers(session_id, session_key, req_headers)
-
-        # req_ts      = all_headers.get('x-qcs-timestamp');
-        # req_nonce   = all_headers.get('x-qcs-nonce');
-        # req_sig     = all_headers.get('x-qcs-signature');
-
-        # if not req_ts or not req_nonce or not req_sig:
-        #     logger.warn('missing headers')
-        #     raise APIException(status_code=401)
-
-        # verify_time(req_ts)
-        # verify_nonce(req_nonce)
-
-        # tokens = {
-        #    "sessionUuid": session_id,
-        #    "date": req_ts,
-        #    "nonce": req_nonce
-        # }
-
-        # if not verify_tokens(tokens, req_sig, session_key):
-        #     logger.warn('token verification failed')
-        #     raise APIException(status_code=401)
-
 
         request_param, param_ype = check_param(func, 'request')
 

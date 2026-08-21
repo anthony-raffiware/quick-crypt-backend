@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from cryptography.exceptions import InvalidSignature
 
 
-logger = logging.getLogger("quick-crypt")
+logger = logging.getLogger("quypter-api")
 
 UUID4_PATTERN = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[0-9a-fA-F]{12}$')
 
