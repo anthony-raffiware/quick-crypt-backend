@@ -29,8 +29,12 @@ def generate_uuid_id(length: int = 16) -> str:
     return uuid.uuid4().hex[:length]
 
 
+def get_current_utc_dt():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
 def get_current_utc_iso_8601():
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return get_current_utc_dt().isoformat()
 
 
 def verify_tokens(tokens: Dict, signature: str, pub_key: str) -> bool:

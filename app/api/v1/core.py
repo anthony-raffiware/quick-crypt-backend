@@ -4,7 +4,9 @@ import logging
 import time
 import uvicorn
 import traceback
+import datetime
 #import inspect
+from cachetools import TTLCache
 from datetime import datetime
 from functools import wraps
 from pprint import pprint
@@ -31,7 +33,12 @@ from fastapi.responses import JSONResponse
 from app.api.v1.dependencies import inject_request
 from app.schema import ResponseMetadata, Collection, APIResponse
 from app.models import Base as ObjectBase
-from app.utils import generate_uuid_id, check_param, verify_tokens
+from app.utils import (
+    generate_uuid_id,
+    check_param,
+    verify_tokens,
+    get_current_utc_dt
+)
 from app.db    import sessionmanager
 from app.crud.session import get_session_key
 
@@ -305,16 +312,19 @@ def verify_session(func):
             raise APIException(status_code=404, detail=f"Session not found")
 
         all_headers = dict(request.headers)
-        req_utc     = all_headers.get('x-qcs-timestamp');
+        req_ts      = all_headers.get('x-qcs-timestamp');
         req_nonce   = all_headers.get('x-qcs-nonce');
         req_sig     = all_headers.get('x-qcs-signature');
 
-        if not req_utc or not req_nonce or not req_sig:
+        if not req_ts or not req_nonce or not req_sig:
             raise APIException(status_code=401)
+
+        verify_time(req_ts)
+        verify_nonce(req_nonce)
 
         tokens = {
            "sessionUuid": session_id,
-           "date": req_utc,
+           "date": req_ts,
            "nonce": req_nonce
         }
 
@@ -330,3 +340,24 @@ def verify_session(func):
 
     return wrapper
 
+
+def verify_time(req_ts: str):
+
+    utc_now_dt = get_current_utc_dt()
+    req_dt     = datetime.fromisoformat(req_ts)
+
+    delta = utc_now_dt - req_dt
+
+    if delta.seconds > 60:
+        raise APIException(status_code=401)
+
+
+nonce_cache = TTLCache(maxsize=200, ttl=60)
+
+
+def verify_nonce(nonce: str):
+
+    if nonce in nonce_cache:
+        raise APIException(status_code=401)
+
+    nonce_cache[nonce] = time.time()

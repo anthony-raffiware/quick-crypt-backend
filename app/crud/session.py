@@ -45,6 +45,7 @@ async def get_session_key(
 
     return session_key
 
+
 async def load_session(
     db_session: DBSessionDep,
     session_id: str
