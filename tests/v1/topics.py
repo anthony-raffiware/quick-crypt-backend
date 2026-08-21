@@ -51,6 +51,7 @@ async def test_topic_reply(api_client, db_session, test_sessions):
 
     assert response.status_code == 201
 
+    #response = await api_client.get(f"/session/{session2.id}/replies/{topic.id}")
     response = await sign_request(test_sessions[1],
         api_client.get, f"/session/{session2.id}/replies/{topic.id}"
     )

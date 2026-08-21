@@ -1,11 +1,11 @@
 import sys
 import asyncio
 import logging
+import contextvars
 import time
 import uvicorn
 import traceback
 import datetime
-#import inspect
 from cachetools import TTLCache
 from datetime import datetime
 from functools import wraps
@@ -177,6 +177,14 @@ class CustomFormatter(uvicorn.logging.DefaultFormatter):
           return dt.isoformat(timespec='milliseconds')
 
 
+request_id_var = contextvars.ContextVar('request_id', default='no_id')
+
+class RequestIDFilter(logging.Filter):
+    def filter(self, record):
+
+        record.request_id = request_id_var.get()
+        return True
+
 def setup_logging(app: FastAPI):
 
     uvicorn_loggers = ["uvicorn", "uvicorn.access", "uvicorn.error"]
@@ -193,9 +201,10 @@ def setup_logging(app: FastAPI):
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(
         CustomFormatter(
-            fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            fmt="%(asctime)s - %(name)s - %(levelname)s - %(request_id)s -- %(message)s"
         )
     )
+    console_handler.addFilter(RequestIDFilter())
     logger.addHandler(console_handler)
 
     # File Handler (Optional)
@@ -211,6 +220,8 @@ async def setup_request(request: Request, call_next):
     request.state.request_id = generate_uuid_id()
     start_time               = time.time()
 
+    request_id_var.set(str(request.state.request_id))
+
     response = await call_next(request)
 
     log_request(request, response, start_time)
@@ -222,7 +233,6 @@ def log_request(request: Request, response: Response, start_time: str ):
 
     process_time = time.time() - start_time
 
-    request_id = request.state.request_id
     timestamp  = time.strftime('%d/%b/%Y:%H:%M:%S %z', time.gmtime())
     ip         = request.client.host if request.client else "-"
     method     = request.method
@@ -230,7 +240,7 @@ def log_request(request: Request, response: Response, start_time: str ):
     status     = response.status_code
 
     # Log in Apache-like format
-    logger.info(f'{request_id} {ip} - - [{timestamp}] "{method} {path}" {status} {process_time:.4f}')
+    logger.info(f'{ip} - - [{timestamp}] "{method} {path}" {status} {process_time:.4f}')
 
     return response
 
@@ -247,14 +257,16 @@ async def catch_all_exceptions(request: Request, call_next):
         path       = request.url.path
         status     = 500 #response.status_code
 
-        logger.info(f'{request_id} {ip} - - [{timestamp}] "{method} {path}" {status}')
+        request_id_var.set(str(request_id))
+
+        logger.info(f'{ip} - - [{timestamp}] "{method} {path}" {status}')
 
         error_message = traceback.format_exc()
-        logger.error(f'{request_id} {error_message}')
+        logger.error(f'{error_message}')
 
         meta = ResponseMetadata(
             error=True,
-            request_id=request.state.request_id,
+            request_id=request_id,
             data_type='Error'
         )
 
@@ -302,6 +314,8 @@ def verify_session(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
 
+        logger.debug('checking sig')
+
         request: Request = kwargs.pop('request')
         session_id       = kwargs.get('session_id')
         db_session       = kwargs.get('db_session')
@@ -309,27 +323,33 @@ def verify_session(func):
         try:
             _, session_key = await get_session_key(db_session, session_id)
         except Exception as e:
+            logger.warn('session key lookup failed')
             raise APIException(status_code=404, detail=f"Session not found")
 
-        all_headers = dict(request.headers)
-        req_ts      = all_headers.get('x-qcs-timestamp');
-        req_nonce   = all_headers.get('x-qcs-nonce');
-        req_sig     = all_headers.get('x-qcs-signature');
+        req_headers = dict(request.headers)
+        verify_request_headers(session_id, session_key, req_headers)
 
-        if not req_ts or not req_nonce or not req_sig:
-            raise APIException(status_code=401)
+        # req_ts      = all_headers.get('x-qcs-timestamp');
+        # req_nonce   = all_headers.get('x-qcs-nonce');
+        # req_sig     = all_headers.get('x-qcs-signature');
 
-        verify_time(req_ts)
-        verify_nonce(req_nonce)
+        # if not req_ts or not req_nonce or not req_sig:
+        #     logger.warn('missing headers')
+        #     raise APIException(status_code=401)
 
-        tokens = {
-           "sessionUuid": session_id,
-           "date": req_ts,
-           "nonce": req_nonce
-        }
+        # verify_time(req_ts)
+        # verify_nonce(req_nonce)
 
-        if not verify_tokens(tokens, req_sig, session_key):
-            raise APIException(status_code=401)
+        # tokens = {
+        #    "sessionUuid": session_id,
+        #    "date": req_ts,
+        #    "nonce": req_nonce
+        # }
+
+        # if not verify_tokens(tokens, req_sig, session_key):
+        #     logger.warn('token verification failed')
+        #     raise APIException(status_code=401)
+
 
         request_param, param_ype = check_param(func, 'request')
 
@@ -339,6 +359,35 @@ def verify_session(func):
             return await func(*args, **kwargs)
 
     return wrapper
+
+
+def verify_request_headers(
+    session_id: str,
+    session_key: str,
+    req_headers: dict
+):
+
+    req_ts    = req_headers.get('x-qcs-timestamp');
+    req_nonce = req_headers.get('x-qcs-nonce');
+    req_sig   = req_headers.get('x-qcs-signature');
+
+    if not req_ts or not req_nonce or not req_sig:
+        logger.warn('missing headers')
+        raise APIException(status_code=401)
+
+    verify_time(req_ts)
+    verify_nonce(req_nonce)
+
+    tokens = {
+       "sessionUuid": session_id,
+       "date": req_ts,
+       "nonce": req_nonce
+    }
+
+    if not verify_tokens(tokens, req_sig, session_key):
+        logger.warn('token verification failed')
+        raise APIException(status_code=401)
+
 
 TIME_DELTA_LIMIT_SECS = 60
 
@@ -350,6 +399,8 @@ def verify_time(req_ts: str):
     delta = utc_now_dt - req_dt
 
     if delta.seconds > TIME_DELTA_LIMIT_SECS:
+
+        logger.warn('exceeded request delta')
         raise APIException(status_code=401)
 
 
@@ -358,6 +409,8 @@ NONCE_CACHE = TTLCache(maxsize=200, ttl=60)
 def verify_nonce(nonce: str):
 
     if nonce in NONCE_CACHE:
+
+        logger.warn('bad nonce')
         raise APIException(status_code=401)
 
     NONCE_CACHE[nonce] = time.time()
