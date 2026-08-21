@@ -84,6 +84,7 @@ async def get_session(
     response_model=Topic,
     status_code=status.HTTP_201_CREATED
 )
+@verify_session
 async def create_new_topic(
     session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     new_topic:  Annotated[
