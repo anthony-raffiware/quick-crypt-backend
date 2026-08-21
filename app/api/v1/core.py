@@ -298,9 +298,10 @@ def verify_session(func):
         request: Request = kwargs.pop('request')
         session_id       = kwargs.get('session_id')
         db_session       = kwargs.get('db_session')
-        session_key      = await get_session_key(db_session, session_id)
 
-        if session_key is None:
+        try:
+            _, session_key = await get_session_key(db_session, session_id)
+        except Exception as e:
             raise APIException(status_code=404, detail=f"Session not found")
 
         all_headers = dict(request.headers)

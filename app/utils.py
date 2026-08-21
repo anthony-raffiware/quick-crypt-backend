@@ -55,8 +55,8 @@ def verify_tokens(tokens: Dict, signature: str, pub_key: str) -> bool:
 
 def sign_tokens(tokens: Dict, priv_key_enc: str) -> str:
 
-    key = load_private_key(priv_key_enc)
-    msg = getMessage_from_tokens(tokens)
+    key      = load_private_key(priv_key_enc)
+    msg      = getMessage_from_tokens(tokens)
     msg_data = bytes(msg, 'utf-8')
 
     try:
@@ -74,7 +74,6 @@ def sign_tokens(tokens: Dict, priv_key_enc: str) -> str:
 def getMessage_from_tokens(tokens: Dict) -> str:
 
     return ",".join([tokens[k] for k in sorted(tokens)])
-
 
 
 def load_private_key(encoded_key: str) -> Ed25519PrivateKey:

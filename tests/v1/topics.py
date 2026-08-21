@@ -37,7 +37,7 @@ async def test_topic_reply(api_client, db_session, test_sessions):
     mock_data = base64.b64encode(gen_junk_data()).decode('utf-8')
 
     new_reply = {
-        "session_key_id": str(session2.key_id),
+        "session_key_id": str(session.key_id),
         "topic_reply_pub_key": pub_der,
         "topic_reply_pub_key_sig": "TESTESTESTFIX",
         "data": mock_data

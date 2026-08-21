@@ -218,6 +218,7 @@ async def create_topic(
 
 async def add_topic_reply(
     db_session: DBSessionDep,
+    session_id: str,
     new_reply: NewTopicReply
 ) -> TopicReply:
 

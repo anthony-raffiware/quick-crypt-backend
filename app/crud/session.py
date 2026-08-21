@@ -1,6 +1,7 @@
 import names
 import uuid
 
+from pprint import pprint
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -30,11 +31,17 @@ async def get_session_key(
 ) -> str:
 
     query = (
-        select(Session.session_pub_key)
+        select(
+           Session.key_id,
+           Session.session_pub_key
+        )
         .where(Session.id == uuid.UUID(session_id))
     )
 
-    session_key = (await db_session.execute(query)).scalars().first()
+    #session_key = (await db_session.execute(query)).scalars().first()
+    session_key = (await db_session.execute(query)).first()
+    print('HII')
+    pprint(session_key)
 
     return session_key
 

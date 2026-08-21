@@ -28,10 +28,11 @@ from app.schema.topic import (
     TopicReply
 )
 from app.schema import Collection, CollectionResponseModel
-from app.crud.topics import  load_topic, add_topic_reply
+from app.crud.topics import load_topic, add_topic_reply
+from app.crud.session import get_session_key
 from app.utils import UUID4_PATTERN, check_param
 from app.api.v1.dependencies import inject_request
-from app.api.v1.core import verify_session
+from app.api.v1.core import verify_session, APIException
 
 
 router = APIRouter(prefix="/topic", tags=["topics"], route_class=WrappedRoute)
@@ -66,6 +67,11 @@ async def send_topic_reply(
     db_session: DBSessionDep,
 ):
 
+    session_key_id, session_key  = await get_session_key(db_session, session_id)
+
+    if session_key_id != new_reply.session_key_id:
+        raise APIException(status_code=400)
+
     new_reply.topic_id = UUID(topic_id)
 
-    return await add_topic_reply(db_session, new_reply)
+    return await add_topic_reply(db_session, session_id, new_reply)
