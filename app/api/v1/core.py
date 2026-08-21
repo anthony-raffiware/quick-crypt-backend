@@ -340,6 +340,7 @@ def verify_session(func):
 
     return wrapper
 
+TIME_DELTA_LIMIT_SECS = 60
 
 def verify_time(req_ts: str):
 
@@ -348,16 +349,15 @@ def verify_time(req_ts: str):
 
     delta = utc_now_dt - req_dt
 
-    if delta.seconds > 60:
+    if delta.seconds > TIME_DELTA_LIMIT_SECS:
         raise APIException(status_code=401)
 
 
-nonce_cache = TTLCache(maxsize=200, ttl=60)
-
+NONCE_CACHE = TTLCache(maxsize=200, ttl=60)
 
 def verify_nonce(nonce: str):
 
-    if nonce in nonce_cache:
+    if nonce in NONCE_CACHE:
         raise APIException(status_code=401)
 
-    nonce_cache[nonce] = time.time()
+    NONCE_CACHE[nonce] = time.time()
