@@ -7,7 +7,8 @@
              "https://dev.raffiware.io"
          ],
          "allow_credentials":true
-      }
+      },
+      "debug": false
    },
    "database_settings": {
       "host" :     "10.100.10.9",
@@ -16,7 +17,7 @@
       "user":      "test_user",
       "password":  "testpass12",
       "port":      5432,
-      "debug":     true
+      "debug":     false
    }
 }
 

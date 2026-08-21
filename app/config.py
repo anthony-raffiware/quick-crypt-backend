@@ -21,7 +21,7 @@ class APISettings(BaseModel):
 
     cores: APISettingsCores
     base_path: str = Field(description='Base URL', default='')
-
+    debug: bool    = Field(description='Enable debugging', default=False)
 
 class DatabaseSettings(BaseModel):
 

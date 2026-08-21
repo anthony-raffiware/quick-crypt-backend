@@ -41,7 +41,9 @@ from app.utils import (
 )
 from app.db    import sessionmanager
 from app.crud.session import get_session_key
+from app.config import Settings
 
+APISettings = Settings().api_settings
 
 logger = logging.getLogger("quick-crypt")
 
@@ -195,8 +197,10 @@ def setup_logging(app: FastAPI):
         uv_logger.handlers.clear()
         uv_logger.propagate = False
 
-
-    logger.setLevel(logging.DEBUG)
+    if APISettings.debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(
