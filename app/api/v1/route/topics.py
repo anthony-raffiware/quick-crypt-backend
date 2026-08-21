@@ -40,13 +40,14 @@ logger = logging.getLogger("quick-crypt")
 
 
 @router.post(
-    "/{topic_id}/send_reply",
+    "/{topic_id}/send_reply/{session_id}",
     response_model=TopicReply,
     status_code=status.HTTP_201_CREATED
 )
 @verify_session
 async def send_topic_reply(
     topic_id: Annotated[str, Path(title="topic id", pattern=UUID4_PATTERN)],
+    session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
     new_reply: Annotated[
         NewTopicReply,
         Body(
@@ -63,7 +64,6 @@ async def send_topic_reply(
         )
     ],
     db_session: DBSessionDep,
-    #request: Request,
 ):
 
     new_reply.topic_id = UUID(topic_id)

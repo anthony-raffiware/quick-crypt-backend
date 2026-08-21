@@ -211,7 +211,6 @@ async def get_sent_topic_replies(
     limit:      int | None      = Query(default=5, ge=1, le=10),
     key_id:     str | None      = Query(default=None),
     key_ts:     datetime | None = Query(default=None),
-#    request: Request = None,
 ):
     """
     - session_id: session UUID

@@ -10,7 +10,8 @@ from pprint import pprint
 from tests.utils import(
   dump_response,
   generate_x25519_key,
-  gen_junk_data
+  gen_junk_data,
+  sign_request
 )
 from app.api.v1 import app
 from app.models import Base, Session, Topic, TopicReply
@@ -32,7 +33,6 @@ async def test_topic_reply(api_client, db_session, test_sessions):
 
     topic = (await get_session_topic_results(db_session, session_id))[0].first()
 
-
     priv_key, priv_der, pub_der = generate_x25519_key()
     mock_data = base64.b64encode(gen_junk_data()).decode('utf-8')
 
@@ -43,19 +43,17 @@ async def test_topic_reply(api_client, db_session, test_sessions):
         "data": mock_data
     }
 
-    response = await api_client.post(
-        f"/topic/{topic.id}/send_reply",
+    response = await sign_request(test_sessions[0],
+        api_client.post, f"/topic/{topic.id}/send_reply/{session_id}",
         json=new_reply
     )
-
     dump_response(response)
 
     assert response.status_code == 201
 
-    response = await api_client.get(
-        f"/session/{session2.id}/replies/{topic.id}",
+    response = await sign_request(test_sessions[1],
+        api_client.get, f"/session/{session2.id}/replies/{topic.id}"
     )
-
     dump_response(response)
 
     assert response.status_code == 200
