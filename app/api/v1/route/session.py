@@ -180,8 +180,6 @@ async def get_topic_replies(
     return ret
 
 
-
-
 @router.post("/{session_id}/topics/{topic_id}/add_comment",
     response_model=ReplyComment,
     status_code=status.HTTP_201_CREATED
