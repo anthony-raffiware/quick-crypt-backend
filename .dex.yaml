@@ -1,0 +1,14 @@
+# https://github.com/symkat/dex
+version: 2
+
+blocks:
+
+  - name: start-api
+    desc: Rebuild  container and run API unning
+    commands:
+      - exec: docker compose -f docker/docker-compose.yml up -d --build  qc_api
+
+  - name: stop-api
+    desc: Stop API server
+    commands:
+      - exec: docker compose -f docker/docker-compose.yml down  qc_api
