@@ -243,6 +243,23 @@ async def add_topic_reply(
     return reply
 
 
+async def last_topic_update(
+    db_session: DBSessionDep,
+    session_id: str,
+) -> str:
+
+    query = (
+        select(Topic.updated_ts)
+        .where(
+            Topic.session_id == session_id,
+        )
+        .order_by(Topic.updated_ts.desc())
+        .limit(1)
+    )
+
+    return (await db_session.execute(query)).scalars().first()
+
+
 async def add_reply_comment(
     db_session: DBSessionDep,
     new_comment: NewReplyComment

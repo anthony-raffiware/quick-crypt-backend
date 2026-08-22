@@ -355,3 +355,35 @@ async def test_session_add_reply_comment(api_client, db_session, test_sessions):
 
     dump_response(response)
 
+@pytest.mark.asyncio(loop_scope="session")
+async def test_session_last_topic_update(api_client, db_session, test_sessions):
+
+    session_id, *_ = test_sessions[0]
+
+    session  = await load_session(db_session, session_id)
+
+    response = await sign_request(test_sessions[0],
+        api_client.get, f"/session/{session_id}/topics/last_update",
+    )
+    dump_response(response)
+
+    assert response.status_code == 200
+
+
+    key, priv, pub = generate_ed25519_key()
+
+    new_session_data = {"pub_key": pub}
+
+    response = await api_client.post('/session/new', json=new_session_data)
+    dump_response(response)
+    assert response.status_code == 201
+
+    new_session_id = response.json().get('data').get('id')
+    new_session = await load_session(db_session, new_session_id)
+
+    response = await sign_request((new_session_id, priv, ''),
+        api_client.get, f"/session/{new_session_id}/topics/last_update",
+    )
+    dump_response(response)
+
+    assert response.status_code == 200

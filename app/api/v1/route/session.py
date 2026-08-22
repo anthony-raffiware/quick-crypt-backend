@@ -1,4 +1,5 @@
 import logging
+from pprint import pprint
 from typing import Annotated
 from datetime import datetime
 
@@ -14,6 +15,8 @@ from fastapi import (
 )
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+
+from pydantic import BaseModel, Field
 
 from app.api.v1.dependencies import DBSessionDep
 from app.api.v1.core import WrappedRoute
@@ -35,7 +38,8 @@ from app.crud.topics import (
     load_session_topic_replies,
     load_session_replies,
     load_topic_with_replies,
-    add_reply_comment
+    add_reply_comment,
+    last_topic_update
 )
 from app.utils import UUID4_PATTERN
 from app.api.v1.core import verify_session, APIException
@@ -127,6 +131,27 @@ async def get_topics(
     return Collection(collection=topics, count=count, page=1, limit=limit)
 
 
+class LastUpdateTs(BaseModel):
+    last_topic_update_ts: datetime = Field(default=datetime.min)
+
+
+@router.get("/{session_id}/topics/last_update",
+    response_model=LastUpdateTs,
+)
+@verify_session
+async def get_last_topic_update(
+    db_session: DBSessionDep,
+    session_id: Annotated[str, Path(title="session id", pattern=UUID4_PATTERN)],
+):
+
+    last_update_ts = await last_topic_update(db_session, session_id)
+
+    if last_update_ts:
+        return LastUpdateTs(last_topic_update_ts=last_update_ts)
+
+    return LastUpdateTs()
+
+
 @router.get("/{session_id}/topics/{topic_id}",
     response_model=TopicFull
 )
@@ -153,6 +178,8 @@ async def get_topic_replies(
         raise APIException(status_code=404, detail=f"Topic not found")
 
     return ret
+
+
 
 
 @router.post("/{session_id}/topics/{topic_id}/add_comment",

@@ -38,10 +38,7 @@ async def get_session_key(
         .where(Session.id == uuid.UUID(session_id))
     )
 
-    #session_key = (await db_session.execute(query)).scalars().first()
     session_key = (await db_session.execute(query)).first()
-    print('HII')
-    pprint(session_key)
 
     return session_key
 
