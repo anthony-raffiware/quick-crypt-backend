@@ -1,6 +1,6 @@
 # Quypter API
 
-Simple web based end-to-end encrypted messaging
+Simple web based end-to-end encrypted message feed
 
 ## Start API
 
