@@ -4,12 +4,23 @@ os.environ['database_settings__pg_schema'] = 'cloud_app_testing'
 
 import pytest
 import pytest_asyncio
-from pprint import pprint
 import json
 import base64
 import uuid
+import secrets
+from pprint import pprint
 from asyncio import current_task, TaskGroup
-from typing import Generic, Type, Callable, TypeVar, Any, Optional, List, Annotated
+from typing import (
+    Generic,
+    Type,
+    Callable,
+    TypeVar,
+    Any,
+    Optional,
+    List,
+    Annotated,
+    Tuple
+)
 from cryptography.hazmat.primitives.asymmetric import ed25519, x25519
 from cryptography.hazmat.primitives import serialization
 
@@ -21,6 +32,7 @@ from app.api.v1 import app
 from app.db import get_db_session, sessionmanager
 from app.models import Base, Session, Topic, TopicReply
 from app.config import Settings
+from app.utils import load_private_key, get_current_utc_iso_8601, sign_tokens
 #os.environ['database_settings__pg_schema'] = 'cloud_app_testing'
 
 
@@ -174,8 +186,8 @@ async def create_session(name:str):
         #await db_session.refresh(message, ["message_parts"])
         await db_session.commit()
 
-
     return str(session.id), priv, str(session.key_id)
+
 
 async def create_topic(
     for_session: Session,
@@ -219,4 +231,58 @@ def gen_junk_data(size: int = 256):
 
     return os.urandom(size)
 
+
+def gen_nonce():
+    return secrets.token_urlsafe(16)
+
+#  response = await client.post(
+#         "https://api.example.com/upload",
+#         headers={"Content-Type": "application/json"},
+#         json={"key": "value"}
+#     )
+
+# x-qcs-nonce f2o4q4zpQpvWACw1jgDgBzzJBgKu0oZpOyPNmpSgh/U=
+#
+# x-qcs-signature BFJuy8lVVwIIqMaWTM_4ycwvbC2gBrIAfyDKGSQsUvJi4ZaMmB3W-WXVURYuVhr32j7sm3Cn3gO59ArHyPraBA
+#
+# x-qcs-timestamp 2026-08-20 16:58:18 +00:00
+
+# const tokens = {
+#     sessionUuid: uuid,
+#     date: nowUtc,
+#     nonce: nonce
+# }
+
+async def sign_request(
+    session_data: Tuple,
+    func: Callable,
+    path: str,
+    headers=None,
+    **kwargs
+):
+
+    if headers is None:
+        headers = {}
+
+    session_id, priv_key_enc, *_ = session_data
+    now_utc  =  get_current_utc_iso_8601()
+    nonce    = gen_nonce()
+
+    tokens = {
+        "sessionUuid": session_id,
+        "date": now_utc,
+        "nonce": nonce
+    }
+
+    sig = sign_tokens(tokens, priv_key_enc)
+
+    sig_headers = {
+      'x-qcs-nonce': nonce,
+      'x-qcs-signature': sig,
+      'x-qcs-timestamp': now_utc
+    }
+
+    headers.update(sig_headers)
+
+    return await func(path, headers=headers, **kwargs)
 

@@ -1,7 +1,16 @@
 from functools import wraps
 from pprint import pprint
 import asyncio
-from typing import Generic, Type, Callable, TypeVar, Any, Optional, List, Annotated
+from typing import (
+    Generic,
+    Type,
+    Callable,
+    TypeVar,
+    Any,
+    Optional,
+    List,
+    Annotated
+)
 from app.db import get_db_session
 from fastapi import Depends, HTTPException, Request
 from fastapi_responseschema import (
@@ -19,10 +28,9 @@ from app.models import Session, Base as ObjectBase
 DBSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-async def get_client_ip(request: Request):
+async def get_client_ip(request: Request) -> str:
     return request.client.host
 
 
-def inject_request(request: Request):
+def inject_request(request: Request) -> Request:
     return request
-

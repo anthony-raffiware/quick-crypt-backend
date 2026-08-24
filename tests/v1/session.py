@@ -12,7 +12,8 @@ from tests.utils import (
     dump_response,
     generate_ed25519_key,
     generate_x25519_key,
-    gen_junk_data
+    gen_junk_data,
+    sign_request
 )
 from app.api.v1 import app
 from app.models import Base, Session, Topic, TopicReply
@@ -30,9 +31,17 @@ async def test_get_session(api_client, db_session, test_sessions):
 
     session_id, *_ = test_sessions[0]
 
-    response = await api_client.get(f"/session/{session_id}")
+    #response = await api_client.get(f"/session/{session_id}")
+    response = await sign_request(test_sessions[0] ,
+                         api_client.get, f"/session/{session_id}"
+                     )
     dump_response(response)
     assert response.status_code == 200
+
+
+    response = await api_client.get(f"/session/{session_id}")
+    dump_response(response)
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -48,7 +57,9 @@ async def test_new_session(api_client, db_session):
 
     session_id = response.json().get('data').get('id')
 
-    response = await api_client.get(f"/session/{session_id}")
+    response = await sign_request((session_id, priv, pub),
+                         api_client.get, f"/session/{session_id}"
+                     )
     dump_response(response)
     assert response.status_code == 200
 
@@ -69,9 +80,10 @@ async def test_session_get_topics(api_client, db_session, test_sessions):
 
     session_id, *_ = test_sessions[0]
 
-    response = await api_client.get(f"/session/{session_id}/topics",
-        params={"limit": 7 }
-    )
+    response = await sign_request(test_sessions[0],
+                         api_client.get, f"/session/{session_id}/topics",
+                         params={"limit": 7 }
+                     )
     dump_response(response)
 
     assert response.status_code == 200
@@ -101,7 +113,9 @@ async def test_session_get_topic_parts(api_client, db_session, test_sessions):
 
     topic = (await db_session.execute(query)).scalars().first()
 
-    response = await api_client.get(f"/session/{session_id}/topics/{topic.id}")
+    response = await sign_request(test_sessions[0],
+                   api_client.get, f"/session/{session_id}/topics/{topic.id}"
+               )
     dump_response(response)
 
     assert response.status_code == 200
@@ -111,10 +125,10 @@ async def test_session_get_topic_parts(api_client, db_session, test_sessions):
 
     assert response.status_code == 200
 
-    response = await api_client.get(f"/session/{session_id}/topics/{topic.id}",
-        params={"limit": 3}
-    )
-
+    response = await sign_request(test_sessions[0],
+                   api_client.get, f"/session/{session_id}/topics/{topic.id}",
+                   params={"limit": 3}
+               )
     dump_response(response)
 
     replies = response.json()['data']['replies']
@@ -125,14 +139,14 @@ async def test_session_get_topic_parts(api_client, db_session, test_sessions):
 
     last = replies[2]
 
-    response = await api_client.get(f"/session/{session_id}/topics/{topic.id}",
+    response = await sign_request(test_sessions[0],
+        api_client.get, f"/session/{session_id}/topics/{topic.id}",
         params={
             "limit": 3,
             "key_id": last['id'],
             "key_ts": last['created_ts'],
         }
     )
-
     dump_response(response)
 
     replies = response.json()['data']['replies']
@@ -143,14 +157,14 @@ async def test_session_get_topic_parts(api_client, db_session, test_sessions):
 
     last = replies[2]
 
-    response = await api_client.get(f"/session/{session_id}/topics/{topic.id}",
+    response = await sign_request(test_sessions[0],
+        api_client.get, f"/session/{session_id}/topics/{topic.id}",
         params={
             "limit": 3,
             "key_id": last['id'],
             "key_ts": last['created_ts'],
         }
     )
-
     dump_response(response)
 
     replies = response.json()['data']['replies']
@@ -174,8 +188,8 @@ async def test_session_new_topic(api_client, db_session, test_sessions):
         "data": base64.urlsafe_b64encode(gen_junk_data()).decode('utf-8').rstrip('=')
     }
 
-    response = await api_client.post(
-        f"/session/{session_id}/new_topic",
+    response = await sign_request(test_sessions[0] ,
+        api_client.post, f"/session/{session_id}/new_topic",
         json=new_topic
     )
     dump_response(response)
@@ -188,8 +202,10 @@ async def test_session_get_sent(api_client, db_session, test_sessions):
 
     session_id, *_ = test_sessions[1]
 
-    session = await load_session(db_session, session_id)
-    response = await api_client.get(f"/session/{session_id}/replies")
+    session  = await load_session(db_session, session_id)
+    response = await sign_request(test_sessions[1] ,
+        api_client.get, f"/session/{session_id}"
+    )
     dump_response(response)
 
     assert response.status_code == 200
@@ -221,7 +237,8 @@ async def test_session_get_sent_parts(api_client, db_session, test_sessions):
 
     topic = (await db_session.execute(query)).scalars().first()
 
-    response = await api_client.get(f"/session/{session2_id}/replies/{topic.id}",
+    response = await sign_request(test_sessions[1],
+        api_client.get, f"/session/{session2_id}/replies/{topic.id}",
         params={"limit": 10 }
     )
     dump_response(response)
@@ -230,10 +247,10 @@ async def test_session_get_sent_parts(api_client, db_session, test_sessions):
 
     assert response.status_code == 200
 
-    response = await api_client.get(f"/session/{session2_id}/replies/{topic.id}",
+    response = await sign_request(test_sessions[1],
+        api_client.get, f"/session/{session2_id}/replies/{topic.id}",
         params={"limit": 2}
     )
-
     dump_response(response)
 
     replies = response.json()['data']['replies']
@@ -243,14 +260,14 @@ async def test_session_get_sent_parts(api_client, db_session, test_sessions):
 
     last = replies[1]
 
-    response = await api_client.get(f"/session/{session2_id}/replies/{topic.id}",
+    response = await sign_request(test_sessions[1],
+        api_client.get, f"/session/{session2_id}/replies/{topic.id}",
         params={
             "limit": 2,
             "key_id": last['id'],
             "key_ts": last['created_ts'],
         }
     )
-
 
     dump_response(response)
 
@@ -261,7 +278,8 @@ async def test_session_get_sent_parts(api_client, db_session, test_sessions):
 
     last = replies[1]
 
-    response = await api_client.get(f"/session/{session2_id}/replies/{topic.id}",
+    response = await sign_request(test_sessions[1],
+        api_client.get, f"/session/{session2_id}/replies/{topic.id}",
         params={
             "limit": 2,
             "key_id": last['id'],
@@ -308,7 +326,8 @@ async def test_session_add_reply_comment(api_client, db_session, test_sessions):
         "data": mock_data
     }
 
-    response = await api_client.post(f"/session/{session_id}/topics/{topic.id}/add_comment",
+    response = await sign_request(test_sessions[0],
+        api_client.post, f"/session/{session_id}/topics/{topic.id}/add_comment",
         json=new_comment
     )
     dump_response(response)
@@ -321,16 +340,50 @@ async def test_session_add_reply_comment(api_client, db_session, test_sessions):
         "data": edited_mock_data
     }
 
-    response = await api_client.post(f"/session/{session_id}/topics/{topic.id}/add_comment",
+    response = await sign_request(test_sessions[0],
+        api_client.post, f"/session/{session_id}/topics/{topic.id}/add_comment",
         json=new_comment
     )
     dump_response(response)
 
     assert response.status_code == 201
 
+    response = await sign_request(test_sessions[1],
+        api_client.get, f"/session/{session2_id}/replies/{topic.id}",
+        params={"limit": 10}
+    )
 
-    response = await api_client.get(f"/session/{session2_id}/replies/{topic.id}",
-        params={"limit": 10 }
+    dump_response(response)
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_session_last_topic_update(api_client, db_session, test_sessions):
+
+    session_id, *_ = test_sessions[0]
+
+    session  = await load_session(db_session, session_id)
+
+    response = await sign_request(test_sessions[0],
+        api_client.get, f"/session/{session_id}/topics/last_update",
     )
     dump_response(response)
 
+    assert response.status_code == 200
+
+
+    key, priv, pub = generate_ed25519_key()
+
+    new_session_data = {"pub_key": pub}
+
+    response = await api_client.post('/session/new', json=new_session_data)
+    dump_response(response)
+    assert response.status_code == 201
+
+    new_session_id = response.json().get('data').get('id')
+    new_session = await load_session(db_session, new_session_id)
+
+    response = await sign_request((new_session_id, priv, ''),
+        api_client.get, f"/session/{new_session_id}/topics/last_update",
+    )
+    dump_response(response)
+
+    assert response.status_code == 200
