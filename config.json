@@ -3,10 +3,12 @@
       "cores": {
          "allow_origins": [
              "http://localhost:4200",
-             "http://127.0.0.1:4200"
+             "http://127.0.0.1:4200",
+             "https://dev.raffiware.io"
          ],
          "allow_credentials":true
-      }
+      },
+      "debug": false
    },
    "database_settings": {
       "host" :     "10.100.10.9",
@@ -15,7 +17,7 @@
       "user":      "test_user",
       "password":  "testpass12",
       "port":      5432,
-      "debug":     true
+      "debug":     false
    }
 }
 

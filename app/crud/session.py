@@ -1,6 +1,7 @@
 import names
 import uuid
 
+from pprint import pprint
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -11,7 +12,7 @@ from app.models import Session
 async def create_session(
     db_session: DBSessionDep,
     key: str,
-):
+) -> Session:
 
     session = Session(session_pub_key=key)
 
@@ -24,10 +25,28 @@ async def create_session(
     return session
 
 
+async def get_session_key(
+    db_session: DBSessionDep,
+    session_id: str
+) -> str:
+
+    query = (
+        select(
+           Session.key_id,
+           Session.session_pub_key
+        )
+        .where(Session.id == uuid.UUID(session_id))
+    )
+
+    session_key = (await db_session.execute(query)).first()
+
+    return session_key
+
+
 async def load_session(
     db_session: DBSessionDep,
     session_id: str
-):
+) -> Session:
 
     query = (
         select(Session)

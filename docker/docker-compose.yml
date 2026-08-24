@@ -1,6 +1,3 @@
-# docker compose -f docker/docker-compose.yml up -d qc_db
-# docker compose -f docker/docker-compose.yml logs qc_db
-# docker compose -f docker/docker-compose.yml exec -ti  qc_db /bin/bash
 name: quick-crypt-backend
 services:
   qc_db:
@@ -12,7 +9,7 @@ services:
         required: false
     volumes:
       - postgres_data:/var/lib/postgresql/18/docker
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
     expose:
       - "5432"
@@ -44,7 +41,6 @@ services:
 networks:
   qc_backend:
     driver: bridge
-      #    internal: true  # No
 
 volumes:
   postgres_data:

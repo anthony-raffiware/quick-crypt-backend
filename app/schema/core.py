@@ -52,6 +52,7 @@ class SerializedBinaryData():
 
         return value
 
+
     @field_serializer('data')
     def serialize_content(self, value: bytes) -> str:
 

@@ -1,6 +1,15 @@
+import sys
+import asyncio
+import logging
+import contextvars
+import time
+import uvicorn
+import traceback
+import datetime
+from cachetools import TTLCache
+from datetime import datetime
 from functools import wraps
 from pprint import pprint
-import asyncio
 from typing import (
     Generic,
     Type,
@@ -11,19 +20,32 @@ from typing import (
     List,
     Annotated
 )
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Response
 from fastapi_responseschema import (
     AbstractResponseSchema,
     SchemaAPIRoute,
 )
 from fastapi_decorators import depends
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
+
 
 from app.api.v1.dependencies import inject_request
 from app.schema import ResponseMetadata, Collection, APIResponse
 from app.models import Base as ObjectBase
-from app.utils import generate_uuid_id
+from app.utils import (
+    generate_uuid_id,
+    check_param,
+    verify_tokens,
+    get_current_utc_dt
+)
 from app.db    import sessionmanager
+from app.crud.session import get_session_key
+from app.config import Settings
+
+APISettings = Settings().api_settings
+
+logger = logging.getLogger("quypter-api")
 
 class APIException(HTTPException):
     pass
@@ -33,6 +55,7 @@ T = TypeVar("T")
 
 
 class ResponseSchema(AbstractResponseSchema[T], Generic[T]):
+
     data: T
     meta: ResponseMetadata
 
@@ -46,6 +69,7 @@ class ResponseSchema(AbstractResponseSchema[T], Generic[T]):
         )
 
         return cls(data=reason, meta=meta)
+
 
     @classmethod
     def from_api_route(
@@ -74,6 +98,7 @@ class WrappedRoute(SchemaAPIRoute):
         response_model: Type[Any],
         **params: Any
     ) -> Callable:
+
         def decorator(func: Callable) -> Callable:
 
             if asyncio.iscoroutinefunction(func):
@@ -82,7 +107,12 @@ class WrappedRoute(SchemaAPIRoute):
                 @wraps(func)
                 async def wrapper(*args: Any, request, **kwargs: Any) -> Any:
 
-                    endpoint_output = await func(*args, **kwargs)
+                    request_param, param_type = check_param(func, 'request')
+
+                    if request_param:
+                        endpoint_output = await func(*args, request=request, **kwargs)
+                    else:
+                        endpoint_output = await func(*args, **kwargs)
 
                     if isinstance(endpoint_output, Collection):
                         data_type = 'Collection'
@@ -123,19 +153,135 @@ class WrappedRoute(SchemaAPIRoute):
 
 async def lifespan(app: FastAPI):
 
+    logger.info("QC API started")
+
     yield
+
+    logger.info("QC API shutting down")
 
     if sessionmanager._engine is not None:
 
         await sessionmanager.close()
 
 
+class CustomFormatter(uvicorn.logging.DefaultFormatter):
+
+    def __init__(self, fmt=None, datefmt=None, style="%", use_colors=None):
+
+        if datefmt is None:
+            datefmt = "%Y-%m-%dT%H:%M:%S"
+
+        super().__init__(fmt=fmt, datefmt=datefmt, style=style, use_colors=use_colors)
+
+    def formatTime(self, record, datefmt=None):
+
+          dt = datetime.fromtimestamp(record.created).astimezone()
+          return dt.isoformat(timespec='milliseconds')
+
+
+request_id_var = contextvars.ContextVar('request_id', default='no_id')
+
+class RequestIDFilter(logging.Filter):
+    def filter(self, record):
+
+        record.request_id = request_id_var.get()
+        return True
+
+def setup_logging(app: FastAPI):
+
+    uvicorn_loggers = ["uvicorn", "uvicorn.access", "uvicorn.error"]
+
+    for logger_name in uvicorn_loggers:
+
+        uv_logger = logging.getLogger(logger_name)
+        uv_logger.handlers.clear()
+        uv_logger.propagate = False
+
+    if APISettings.debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(
+        CustomFormatter(
+            fmt="%(asctime)s - %(name)s - %(levelname)s - %(request_id)s -- %(message)s"
+        )
+    )
+    console_handler.addFilter(RequestIDFilter())
+    logger.addHandler(console_handler)
+
+    # File Handler (Optional)
+    # file_handler = logging.FileHandler("app.log")
+    # file_handler.setFormatter(logging.Formatter(
+    #     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    # ))
+    # logger.addHandler(file_handler)
+
+
 async def setup_request(request: Request, call_next):
 
     request.state.request_id = generate_uuid_id()
+    start_time               = time.time()
+
+    request_id_var.set(str(request.state.request_id))
+
     response = await call_next(request)
 
+    log_request(request, response, start_time)
+
     return response
+
+
+def log_request(request: Request, response: Response, start_time: str ):
+
+    process_time = time.time() - start_time
+
+    timestamp  = time.strftime('%d/%b/%Y:%H:%M:%S %z', time.gmtime())
+    ip         = request.client.host if request.client else "-"
+    method     = request.method
+    path       = request.url.path
+    status     = response.status_code
+
+    # Log in Apache-like format
+    logger.info(f'{ip} - - [{timestamp}] "{method} {path}" {status} {process_time:.4f}')
+
+    return response
+
+
+async def catch_all_exceptions(request: Request, call_next):
+
+    try:
+        return await call_next(request)
+    except Exception as exc:
+
+        request_id = request.state.request_id
+        timestamp  = time.strftime('%d/%b/%Y:%H:%M:%S %z', time.gmtime())
+        ip         = request.client.host if request.client else "-"
+        method     = request.method
+        path       = request.url.path
+        status     = 500 #response.status_code
+
+        request_id_var.set(str(request_id))
+
+        logger.info(f'{ip} - - [{timestamp}] "{method} {path}" {status}')
+
+        error_message = traceback.format_exc()
+        logger.error(f'{error_message}')
+
+        meta = ResponseMetadata(
+            error=True,
+            request_id=request_id,
+            data_type='Error'
+        )
+
+        return JSONResponse(
+            status_code=500,
+            content={
+               "data": 'Server Error',
+               "meta": meta.model_dump()
+            }
+        )
 
 
 def custom_openapi(app):
@@ -146,11 +292,11 @@ def custom_openapi(app):
             return app.openapi_schema
 
         openapi_schema = get_openapi(
-            title="QuickCrypt API",
+            title="Quypter API",
             version="1.0.0",
             routes=app.routes
         )
-        # Replace the default 422 schema with your custom model
+
         openapi_schema["components"]["schemas"]["ErrorResponse"] = APIResponse.schema()
         for path in openapi_schema["paths"].values():
             for method in path.values():
@@ -165,3 +311,90 @@ def custom_openapi(app):
         return app.openapi_schema
 
     return custom_builder
+
+
+def verify_session(func):
+
+    @depends(request=Depends(inject_request))
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+
+        logger.debug('checking sig')
+
+        request: Request = kwargs.pop('request')
+        session_id       = kwargs.get('session_id')
+        db_session       = kwargs.get('db_session')
+
+        try:
+            _, session_key = await get_session_key(db_session, session_id)
+        except Exception as e:
+            logger.warn('session key lookup failed')
+            raise APIException(status_code=404, detail=f"Session not found")
+
+        req_headers = dict(request.headers)
+
+        verify_request_headers(session_id, session_key, req_headers)
+
+        request_param, param_ype = check_param(func, 'request')
+
+        if request_param:
+            return await func(*args, request=request, **kwargs)
+        else:
+            return await func(*args, **kwargs)
+
+    return wrapper
+
+
+def verify_request_headers(
+    session_id: str,
+    session_key: str,
+    req_headers: dict
+):
+
+    req_ts    = req_headers.get('x-qcs-timestamp');
+    req_nonce = req_headers.get('x-qcs-nonce');
+    req_sig   = req_headers.get('x-qcs-signature');
+
+    if not req_ts or not req_nonce or not req_sig:
+        logger.warn('missing headers')
+        raise APIException(status_code=401)
+
+    verify_time(req_ts)
+    verify_nonce(req_nonce)
+
+    tokens = {
+       "sessionUuid": session_id,
+       "date": req_ts,
+       "nonce": req_nonce
+    }
+
+    if not verify_tokens(tokens, req_sig, session_key):
+        logger.warn('token verification failed')
+        raise APIException(status_code=401)
+
+
+TIME_DELTA_LIMIT_SECS = 60
+
+def verify_time(req_ts: str):
+
+    utc_now_dt = get_current_utc_dt()
+    req_dt     = datetime.fromisoformat(req_ts)
+
+    delta = utc_now_dt - req_dt
+
+    if delta.seconds > TIME_DELTA_LIMIT_SECS:
+
+        logger.warn('exceeded request delta')
+        raise APIException(status_code=401)
+
+
+NONCE_CACHE = TTLCache(maxsize=200, ttl=60)
+
+def verify_nonce(nonce: str):
+
+    if nonce in NONCE_CACHE:
+
+        logger.warn('bad nonce')
+        raise APIException(status_code=401)
+
+    NONCE_CACHE[nonce] = time.time()
