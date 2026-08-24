@@ -380,11 +380,12 @@ def verify_time(req_ts: str):
     utc_now_dt = get_current_utc_dt()
     req_dt     = datetime.fromisoformat(req_ts)
 
-    delta = utc_now_dt - req_dt
+    delta = abs(utc_now_dt - req_dt)
 
     if delta.seconds > TIME_DELTA_LIMIT_SECS:
 
-        logger.warn('exceeded request delta')
+
+        logger.warn(f"exceeded request delta: {delta.seconds}, {utc_now_dt} - {req_dt}")
         raise APIException(status_code=401)
 
 
