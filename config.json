@@ -3,19 +3,18 @@
       "cores": {
          "allow_origins": [
              "http://localhost:4200",
-             "http://127.0.0.1:4200",
-             "https://dev.raffiware.io"
+             "http://127.0.0.1:4200"
          ],
          "allow_credentials":true
       },
       "debug": false
    },
    "database_settings": {
-      "host" :     "10.100.10.9",
-      "database":  "test_db",
-      "pg_schema": "cloud_app_dev",
-      "user":      "test_user",
-      "password":  "testpass12",
+      "host" :     "",
+      "database":  "",
+      "pg_schema": "",
+      "user":      "",
+      "password":  "",
       "port":      5432,
       "debug":     false
    }

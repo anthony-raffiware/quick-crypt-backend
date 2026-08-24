@@ -1,24 +1,12 @@
 # Quypter API
 
-Simple web based end-to-end encrypted messaging
-
-## Start API
+Front-end API for the Quypter Web App
 
 
-Copy override.env.example to override.env and edit
-credentials
+## Running dev instance
 
-```
-cp docker/override.env.example override.env
-```
 
-### Docker
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
-### uv
+Edit `database_settings` in `config.json`
 
 
 ```
